@@ -78,6 +78,7 @@ io.on('connection', (socket) => {
       const response = await callReactAgent(userMessage)
       // Stream each chunk as it comes
       for await (let chunk of response.messages) {
+        console.log(chunk.content)
         if(chunk.additional_kwargs.role == 'assistant') {
           socket.emit('agentResponse', chunk)
         }

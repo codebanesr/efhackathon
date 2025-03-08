@@ -16,8 +16,8 @@ const stat = promisify(fs.stat);
  */
 export const fileTool = tool(
   async (input): Promise<string> => {
-    const { operation, filePath, content, recursive } = input;
-    
+    const { operation, content, recursive, projectName } = input;
+    const filePath = "extras/" + projectName;
     try {
       switch (operation) {
         case "create":
@@ -115,8 +115,8 @@ export const fileTool = tool(
     schema: z.object({
       operation: z.enum(["create", "read", "delete", "list", "exists", "append"])
         .describe("The file operation to perform"),
-      filePath: z.string()
-        .describe("Path to the file or directory for the operation"),
+        projectName: z.string()
+        .describe("Project name of the cloned repository"),
       content: z.string().optional()
         .describe("Content to write to the file (for create and append operations)"),
       recursive: z.boolean().optional().default(true)
