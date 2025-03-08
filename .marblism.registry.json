@@ -1,0 +1,234 @@
+{
+  "pathPlan": "/.marblism.plan.json",
+  "pathPagesOutput": "/app/routes",
+  "commands": {
+    "install": "pnpm install && pnpm run crud:sync",
+    "checkPages": "pnpm run check:code",
+    "format": "pnpm run format",
+    "postInstall": "pnpm run crud:sync"
+  },
+  "sections": {
+    "entity": {
+      "include": [],
+      "exclude": []
+    },
+    "entityRelation": {
+      "include": [],
+      "exclude": []
+    },
+    "update": {
+      "include": [
+        "/models/models.zmodel",
+        "/prisma/seed/mockUser.ts",
+        "/app/root.tsx",
+        "/app/routes/_logged.profile_/route.tsx",
+        "/app/routes/_auth.register_/route.tsx",
+        "/app/core/context/internal/useUserContext.tsx",
+        "/app/core/trpc/server/index.tsx",
+        "/app/server",
+        "/app/core/authentication/server",
+        "/app/core/database",
+        "/app/designSystem/layouts/NavigationLayout",
+        "/app/designSystem/core/html/index.tsx",
+        "/app/designSystem/style/main.scss",
+        "/app/designSystem/theme/theme.tsx",
+        "/app/designSystem/index.tsx",
+        "/app/designSystem/ui/AppHeader/index.tsx",
+        "/app/plugins/email/server/templates",
+        "/docker-compose.yml",
+        "/server/index.ts",
+        "/.env.template",
+        "/vite.config.ts"
+      ],
+      "exclude": []
+    },
+    "delete": {
+      "include": [
+        "/.github",
+        "/.marblism.config.js",
+        "/.marblism.plan.json",
+        "/.marblism.registry.json",
+        "/app/routes/_logged.(delete).ai_",
+        "/app/routes/_logged.(delete).home_",
+        "/app/routes/_logged.(delete).upload_",
+        "/app/routes/_logged.(delete).feed_",
+        "/app/routes/_logged.(delete).socket_",
+        "/app/routes/_logged.(delete).admin_",
+        "/app/routes/_logged.(delete).support_",
+        "/app/routes/_logged.(delete).chat_",
+        "/app/routes/_logged.(delete).form_",
+        "/app/routes/_logged.(delete).designbox_",
+        "/app/routes/_logged.(delete).twilio_",
+        "/app/routes/_logged.(delete).analytics-local_",
+        "/app/routes/_logged.(delete).plugins_",
+        "/app/routes/_logged.(delete).shopping-cart_",
+        "/app/routes/_logged.(delete).internationalization_",
+        "/app/designSystem/layouts/pageLayouts",
+        "/app/plugins/(delete)",
+        "/docs",
+        ".npmrc",
+        "/.eslintignore",
+        "/pnpm-workspace.yaml",
+        "/app/plugins/mixpanel"
+      ],
+      "exclude": []
+    },
+    "databaseMock": {
+      "include": ["/prisma/seed/mockData.ts"],
+      "exclude": []
+    },
+    "pageLayout": {
+      "include": ["/app/designSystem/layouts/pageLayouts"],
+      "exclude": []
+    },
+    "providers": {
+      "include": [
+        "/app/core/context/internal/useUserContext.tsx",
+        "/app/core/helpers/date/index.ts",
+        "/app/plugins/ai/server/ai.router.tsx",
+        "/app/plugins/(delete)/router.tsx",
+        "/app/plugins/upload/client/index.tsx"
+      ],
+      "exclude": []
+    }
+  },
+  "modules": {
+    "LANDING_PAGE": {
+      "packageDependencies": [],
+      "content": {
+        "include": ["/app/routes/landing.tsx", "/app/designSystem/landing"]
+      },
+      "deleteIfActive": {
+        "include": ["/app/routes/landing.tsx"],
+        "exclude": []
+      }
+    },
+    "ORGANIZATION": {
+      "packageDependencies": [],
+      "content": {
+        "include": [
+          "/app/plugins/organization",
+          "/app/routes/_logged.organizations.$organizationId.members_",
+          "/app/routes/_logged.organizations.$organizationId.settings_",
+          "/app/routes/_logged.organizations.$organizationId.pricing_",
+          "/app/routes/_logged.organizations"
+        ]
+      }
+    },
+    "PAYMENT": {
+      "packageDependencies": ["stripe"],
+      "content": {
+        "include": [
+          "/app/plugins/payment",
+          "/app/routes/api.billing.webhook.stripe.tsx",
+          "/app/routes/_logged.organizations.$organizationId.pricing_",
+          "/app/routes/_logged.pricing_"
+        ]
+      },
+      "providers": {
+        "include": ["/app/plugins/payment/server/billing.router.tsx"]
+      }
+    },
+    "PWA": {
+      "packageDependencies": [
+        "@remix-pwa/push",
+        "web-push",
+        "@remix-pwa/dev",
+        "@remix-pwa/sw",
+        "@remix-pwa/worker-runtime",
+        "remix-pwa"
+      ],
+      "content": {
+        "include": [
+          "/public/entry.worker.js",
+          "/app/routes/manifest[.webmanifest].ts",
+          "/app/entry.worker.ts",
+          "/app/plugins/pwa"
+        ]
+      },
+      "deleteIfNotActive": {
+        "include": ["/public/pwa"]
+      },
+      "deleteIfActive": {
+        "include": []
+      }
+    },
+    "CRON": {
+      "packageDependencies": ["node-cron", "@types/node-cron"],
+      "content": {
+        "include": ["/app/plugins/cron"]
+      }
+    },
+    "SOCKET": {
+      "packageDependencies": ["socket.io", "socket.io-client"],
+      "content": {
+        "include": ["/app/plugins/socket"]
+      },
+      "providers": {
+        "include": ["/app/plugins/socket/client/index.tsx"]
+      }
+    },
+    "CRAWL": {
+      "packageDependencies": ["@mendable/firecrawl-js"],
+      "content": {
+        "include": ["/app/plugins/crawl"]
+      },
+      "providers": {
+        "include": ["/app/plugins/crawl/server/crawl.router.tsx"]
+      }
+    },
+    "DOCUMENT_PROCESSOR": {
+      "packageDependencies": [
+        "pdf-parse",
+        "mammoth",
+        "cheerio",
+        "@types/papaparse",
+        "@types/pdf-parse"
+      ],
+      "content": {
+        "include": ["/app/plugins/documentProcessor"]
+      },
+      "providers": {
+        "include": [
+          "/app/plugins/documentProcessor/server/documentProcessor.router.tsx"
+        ]
+      }
+    },
+    "INTEGRATIONS": {
+      "packageDependencies": ["@nangohq/node", "@nangohq/frontend"],
+      "content": {
+        "include": ["/app/plugins/nango"]
+      },
+      "providers": {
+        "include": ["/app/plugins/nango/server/nango.router.tsx"]
+      }
+    }
+  },
+  "dependencies": {
+    "delete": [
+      "react-infinite-scroll-component",
+      "http-proxy-middleware",
+      "mixpanel",
+      "@types/mixpanel",
+      "twilio",
+      "react-beautiful-dnd",
+      "@types/react-beautiful-dnd",
+      "@blocknote/core",
+      "@blocknote/mantine",
+      "@blocknote/react",
+      "react-select-country-list",
+      "@types/react-select-country-list",
+      "styled-components",
+      "decompress",
+      "archiver",
+      "fs-extra",
+      "@types/archiver",
+      "@types/decompress",
+      "@types/fs-extra",
+      "react-i18next",
+      "i18next",
+      "i18next-browser-languagedetector",
+      "@faker-js/faker"
+    ]
+  }
+}

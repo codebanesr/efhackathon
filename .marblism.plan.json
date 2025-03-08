@@ -1,0 +1,296 @@
+{
+  "entities": [
+    {
+      "name": "user",
+      "properties": [
+        {
+          "name": "id",
+          "isPrimaryKey": true,
+          "type": "uuid",
+          "valueDefault": "uuid-auto-generated",
+          "isExist": true
+        },
+        {
+          "name": "email",
+          "isUnique": true,
+          "isNullable": true,
+          "type": "string",
+          "isExist": true
+        },
+        {
+          "name": "name",
+          "isNullable": true,
+          "type": "string",
+          "isExist": true
+        },
+        {
+          "name": "pictureUrl",
+          "isNullable": true,
+          "type": "string",
+          "isExist": true
+        },
+        {
+          "name": "tokenInvitation",
+          "isNullable": true,
+          "type": "string",
+          "isExist": true
+        },
+        {
+          "name": "stripeCustomerId",
+          "isNullable": true,
+          "type": "string",
+          "isExist": true,
+          "templateModuleKeys": ["PAYMENT"]
+        },
+        {
+          "name": "status",
+          "isNullable": false,
+          "type": "string",
+          "valueDefault": "VERIFIED",
+          "isExist": true
+        },
+        {
+          "name": "globalRole",
+          "isNullable": false,
+          "type": "string",
+          "valueDefault": "USER",
+          "isExist": true
+        },
+        {
+          "name": "password",
+          "isNullable": true,
+          "type": "string",
+          "isExist": true,
+          "isHidden": true
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "valueDefault": "NOW()",
+          "isExist": true
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "valueDefault": "NOW()",
+          "isExist": true
+        }
+      ],
+      "operations": [],
+      "description": "",
+      "sql": "",
+      "isExist": true
+    }
+  ],
+  "AI_RAG": {
+    "entities": [
+      {
+        "name": "ragVector",
+        "properties": [
+          {
+            "name": "id",
+            "isPrimaryKey": true,
+            "type": "uuid",
+            "valueDefault": "uuid-auto-generated",
+            "isExist": true
+          },
+          {
+            "name": "key",
+            "type": "string",
+            "isExist": true
+          },
+          {
+            "name": "tags",
+            "type": "jsonb",
+            "isExist": true
+          }
+        ],
+        "operations": [],
+        "description": "",
+        "sql": "",
+        "isExist": true
+      }
+    ]
+  },
+  "ORGANIZATION": {
+    "entities": [
+      {
+        "name": "organization",
+        "properties": [
+          {
+            "name": "id",
+            "isPrimaryKey": true,
+            "type": "uuid",
+            "valueDefault": "uuid-auto-generated",
+            "isExist": true
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "isExist": true
+          },
+          {
+            "name": "stripeCustomerId",
+            "isNullable": true,
+            "type": "string",
+            "isExist": true,
+            "templateModuleKeys": ["PAYMENT"]
+          },
+          {
+            "name": "pictureUrl",
+            "isNullable": true,
+            "type": "string",
+            "isExist": true
+          },
+          {
+            "name": "createdAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          },
+          {
+            "name": "updatedAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          }
+        ],
+        "operations": [],
+        "description": "",
+        "sql": "",
+        "isExist": true
+      },
+      {
+        "name": "organizationRole",
+        "properties": [
+          {
+            "name": "id",
+            "isPrimaryKey": true,
+            "type": "uuid",
+            "valueDefault": "uuid-auto-generated",
+            "isExist": true
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "isExist": true
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "isExist": true,
+            "isUnique": false,
+            "relation": {
+              "type": "ManyToOne",
+              "sourceKey": "userId",
+              "tableName": "user",
+              "targetKey": "id",
+              "primaryKey": "id",
+              "description": "ManyToOne relation with user",
+              "sourceKeyComputed": "user",
+              "targetKeyComputed": "organizationRoles"
+            },
+            "isNullable": false,
+            "isViewName": false,
+            "description": "",
+            "isPrimaryKey": false
+          },
+          {
+            "name": "organizationId",
+            "type": "uuid",
+            "isExist": true,
+            "isUnique": false,
+            "relation": {
+              "type": "ManyToOne",
+              "sourceKey": "organizationId",
+              "tableName": "organization",
+              "targetKey": "id",
+              "primaryKey": "id",
+              "description": "ManyToOne relation with organization",
+              "sourceKeyComputed": "organization",
+              "targetKeyComputed": "roles"
+            },
+            "isNullable": false,
+            "isViewName": false,
+            "description": "",
+            "isPrimaryKey": false
+          },
+          {
+            "name": "createdAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          },
+          {
+            "name": "updatedAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          }
+        ],
+        "operations": [],
+        "description": "",
+        "sql": "",
+        "isExist": true
+      }
+    ]
+  },
+  "PAYMENT": {},
+  "PWA": {
+    "entities": [
+      {
+        "name": "pwaSubscription",
+        "properties": [
+          {
+            "name": "id",
+            "isPrimaryKey": true,
+            "type": "uuid",
+            "valueDefault": "uuid-auto-generated",
+            "isExist": true
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "isExist": true
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "isExist": true,
+            "isUnique": false,
+            "relation": {
+              "type": "ManyToOne",
+              "sourceKey": "userId",
+              "tableName": "user",
+              "targetKey": "id",
+              "primaryKey": "id",
+              "description": "ManyToOne relation with user",
+              "sourceKeyComputed": "user",
+              "targetKeyComputed": "pushNotifications"
+            },
+            "isNullable": false,
+            "isViewName": false,
+            "description": "",
+            "isPrimaryKey": false
+          },
+          {
+            "name": "createdAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          },
+          {
+            "name": "updatedAt",
+            "type": "Date",
+            "valueDefault": "NOW()",
+            "isExist": true
+          }
+        ],
+        "operations": [],
+        "description": "",
+        "sql": "",
+        "isExist": true
+      }
+    ]
+  }
+}

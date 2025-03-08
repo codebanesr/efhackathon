@@ -1,0 +1,69 @@
+enum UserStatus {
+    INVITED
+    VERIFIED
+}
+
+model User {
+    id                String             @id @default(uuid())
+    name              String?
+    email             String?            @unique
+    pictureUrl        String?            @default('https://i.imgur.com/ZdJSK3Y.jpeg')
+    tokenInvitation   String?
+
+    stripeCustomerId  String?
+
+    status            UserStatus         @default(VERIFIED)
+
+    // this is the role of the user for the application
+    globalRole        String             @default('USER')
+    password          String?            @password @omit
+    createdAt         DateTime           @default(now())
+    updatedAt         DateTime           @updatedAt @default(now())
+
+    organizationRoles OrganizationRole[]
+
+    @@auth()
+    @@allow("all", auth().id == this.id)
+    @@allow('all', auth().globalRole == 'ADMIN')
+
+    //we only allow that user to register if they don't create an admin role
+    @@allow("create", globalRole != 'ADMIN')
+    @@allow("read", true)
+}
+
+
+
+model Organization {
+    id               String             @id @default(uuid())
+    name             String
+    pictureUrl       String?            @default('https://i.imgur.com/BgkFiid.jpeg')
+
+    stripeCustomerId String?
+
+    createdAt        DateTime           @default(now())
+    updatedAt        DateTime           @updatedAt @default(now())
+    roles            OrganizationRole[]
+
+    @@allow('all', auth().globalRole == 'ADMIN')
+    @@allow('all', roles?[user == auth() && name == 'owner'])
+    @@allow('read', roles?[user == auth()])
+}
+
+model OrganizationRole {
+    id             String       @id @default(uuid())
+    name           String
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt @default(now())
+
+    userId         String       @default(auth().id)
+    user           User         @relation(fields: [userId], references: [id])
+    organizationId String
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+    @@allow('all', auth().globalRole == 'ADMIN')
+    @@allow('all', organization.roles?[user == auth() && name == 'owner'])
+    @@allow('create', organization.roles?[user == auth()] && name != 'owner')
+    @@allow('read', organization.roles?[user == auth()])
+    @@allow('delete', auth() == user)
+}
+
