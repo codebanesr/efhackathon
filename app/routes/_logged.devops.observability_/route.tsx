@@ -1,4 +1,4 @@
-import { Card, Col, Row, Select, Table, Tabs, Tag, Typography, Alert, Button, Space, Badge, Progress } from 'antd'
+import { Card, Col, Row, Select, Table, Tabs, Tag, Typography, Alert, Button, Space, Badge, Progress, message } from 'antd'
 import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 import { InfoCircleOutlined, WarningOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons'
@@ -149,6 +149,23 @@ export default function ObservabilityDashboard() {
   const [performanceData, setPerformanceData] = useState([])
   const [alerts, setAlerts] = useState([])
   const [timeRange, setTimeRange] = useState('24h')
+  const [deploymentId, setDeploymentId] = useState<string>('')
+  
+  // Check for deployment ID in localStorage
+  useEffect(() => {
+    try {
+      const lastDeploymentId = localStorage.getItem('lastDeploymentId')
+      if (lastDeploymentId) {
+        setDeploymentId(lastDeploymentId)
+        // Show logs tab by default when viewing a deployment
+        setActiveTab('logs')
+        // Show a welcome notification
+        message.success(`Viewing logs for deployment: ${lastDeploymentId.substring(0, 8)}`, 3)
+      }
+    } catch (error) {
+      console.error('Failed to retrieve deployment ID', error)
+    }
+  }, [])
   
   useEffect(() => {
     // Load initial data
@@ -276,68 +293,92 @@ export default function ObservabilityDashboard() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']
   
   return (
-    <div style={{ padding: '20px' }}>
-      <Title level={2}>DevOps Observability Dashboard</Title>
+    <div style={{ padding: '20px', height: '100vh', overflow: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <Title level={2}>DevOps Observability Dashboard</Title>
+        {deploymentId && (
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <Space>
+                <span>Viewing Deployment:</span>
+                <Tag color="blue">{deploymentId.substring(0, 8)}</Tag>
+                <Button size="small" onClick={() => localStorage.removeItem('lastDeploymentId')}>
+                  Clear
+                </Button>
+              </Space>
+            }
+          />
+        )}
+      </div>
       
       <SystemHealthStatus />
       
       <Row gutter={[16, 16]} style={{ marginBottom: '20px' }}>
         <Col span={12}>
-          <Card title="Active Alerts">
-            {alerts.filter(alert => alert.status === 'active').length > 0 ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {alerts
-                  .filter(alert => alert.status === 'active')
-                  .slice(0, 3)
-                  .map(alert => (
-                    <Alert
-                      key={alert.id}
-                      message={alert.message}
-                      description={
-                        <Space direction="vertical">
-                          <Text>Service: {alert.service}</Text>
-                          <Text type="secondary">
-                            <ClockCircleOutlined /> {new Date(alert.timestamp).toLocaleTimeString()}
-                          </Text>
-                          <Text strong>Recommendation: {alert.recommendation}</Text>
-                        </Space>
-                      }
-                      type={alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 
-                            alert.severity === 'medium' ? 'warning' : 'info'}
-                      showIcon
-                    />
-                  ))}
-              </Space>
-            ) : (
-              <Alert
-                message="No active alerts"
-                description="All systems operating normally."
-                type="success"
-                showIcon
-              />
-            )}
+          <Card title="CPU Requests, Limits and Usage" size="small">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Area type="monotone" dataKey="cpu" stroke="#8884d8" fill="#8884d8" name="CPU Usage" />
+                <Area type="monotone" dataKey="cpu" stroke="#82ca9d" fill="transparent" strokeDasharray="5 5" name="CPU Requests" />
+              </AreaChart>
+            </ResponsiveContainer>
           </Card>
         </Col>
         
         <Col span={12}>
-          <Card title="Error Distribution">
+          <Card title="Memory Requests, Limits and Usage" size="small">
             <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={errorDistribution}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {errorDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
+              <AreaChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
                 <Tooltip />
-              </PieChart>
+                <Area type="monotone" dataKey="memory" stroke="#82ca9d" fill="#82ca9d" name="Memory Used" />
+                <Area type="monotone" dataKey="memory" stroke="#ffc658" fill="transparent" strokeDasharray="5 5" name="Memory Requests" />
+                <Area type="monotone" dataKey="memory" stroke="#ff7300" fill="transparent" strokeDasharray="3 3" name="Memory Limits" stackId="1" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        
+        <Col span={12}>
+          <Card title="Network Rate" size="small">
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="networkIn" stroke="#8884d8" name="Bytes Received" />
+                <Line type="monotone" dataKey="networkOut" stroke="#82ca9d" name="Bytes Transmitted" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        
+        <Col span={12}>
+          <Card title="Container States" size="small">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={performanceData.map(item => ({
+                ...item,
+                running: 1,
+                terminated: 0,
+                waiting: 0
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="running" stackId="a" fill="#52c41a" name="Running" />
+                <Bar dataKey="terminated" stackId="a" fill="#ff4d4f" name="Terminated" />
+                <Bar dataKey="waiting" stackId="a" fill="#faad14" name="Waiting" />
+              </BarChart>
             </ResponsiveContainer>
           </Card>
         </Col>

@@ -5,7 +5,7 @@ import { Leftbar } from './components/Leftbar'
 import { Mobilebar } from './components/Mobilebar'
 import { Topbar } from './components/Topbar'
 import { NavigationItem } from './types'
-import { DatabaseOutlined, DashboardOutlined, CloudServerOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, DashboardOutlined, CloudServerOutlined, RocketOutlined } from '@ant-design/icons'
 
 import { useUserContext } from '~/core/context'
 
@@ -32,7 +32,7 @@ export const NavigationLayout: React.FC<Props> = ({ children }) => {
       icon: <DashboardOutlined />,
       onClick: () => goTo('/home'),
     },
-    
+
     // DevOps Tool Pages
     {
       key: '/devops/repositories',
@@ -42,12 +42,14 @@ export const NavigationLayout: React.FC<Props> = ({ children }) => {
       onClick: () => goTo('/devops/repositories'),
     },
     
+    // Removed observability from sidebar
+    
     {
-      key: '/devops/observability',
-      label: 'Observability',
+      key: '/devops/deployments',
+      label: 'Deployments',
       position: 'leftbar',
-      icon: <DatabaseOutlined />,
-      onClick: () => goTo('/devops/observability'),
+      icon: <RocketOutlined />,
+      onClick: () => goTo('/devops/deployments'),
     },
 
     {
@@ -62,6 +64,14 @@ export const NavigationLayout: React.FC<Props> = ({ children }) => {
             organization.id,
           ),
         ),
+    },
+
+    {
+      key: '/projects',
+      label: 'Projects',
+      position: 'leftbar',
+      icon: <DatabaseOutlined />,
+      onClick: () => goTo('/projects'),
     },
 
     {

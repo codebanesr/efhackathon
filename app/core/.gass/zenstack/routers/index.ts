@@ -4,9 +4,11 @@ import type { PrismaClient } from "@zenstackhq/runtime/models";
 import createUserRouter from "./User.router";
 import createOrganizationRouter from "./Organization.router";
 import createOrganizationRoleRouter from "./OrganizationRole.router";
+import createProjectRouter from "./Project.router";
 import { ClientType as UserClientType } from "./User.router";
 import { ClientType as OrganizationClientType } from "./Organization.router";
 import { ClientType as OrganizationRoleClientType } from "./OrganizationRole.router";
+import { ClientType as ProjectClientType } from "./Project.router";
 
 export type BaseConfig = AnyRootConfig;
 
@@ -34,6 +36,7 @@ export function createRouter<Config extends BaseConfig>(router: RouterFactory<Co
         user: createUserRouter(router, procedure),
         organization: createOrganizationRouter(router, procedure),
         organizationRole: createOrganizationRoleRouter(router, procedure),
+        project: createProjectRouter(router, procedure),
     }
     );
 }
@@ -42,4 +45,5 @@ export interface ClientType<AppRouter extends AnyRouter> {
     user: UserClientType<AppRouter>;
     organization: OrganizationClientType<AppRouter>;
     organizationRole: OrganizationRoleClientType<AppRouter>;
+    project: ProjectClientType<AppRouter>;
 }

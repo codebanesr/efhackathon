@@ -21,7 +21,7 @@ plugin prisma {
 
 plugin trpc {
     provider = '@zenstackhq/trpc'
-    output = '../app/core/.marblism/zenstack'
+    output = '../app/core/.gass/zenstack'
     generateClientHelpers = ['react']
     generateModelActions = ['create', 'update', 'delete','count', 'findMany', 'findFirst', 'findUnique', 'createMany', 'updateMany', 'deleteMany']
 }
