@@ -4,10 +4,15 @@ import express from 'express'
 import { createServer } from 'http'
 import morgan from 'morgan'
 import { AuthenticationServer } from '~/core/authentication/server'
+import { Server as SocketIOServer } from 'socket.io'
+import path from 'path'
+import { callReactAgent } from './reactAgent'
 
 const app = express()
 
 const httpServer = createServer(app)
+// Initialize Socket.IO
+const io = new SocketIOServer(httpServer)
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -53,9 +58,43 @@ if (viteDevServer) {
 // more aggressive with this caching.
 app.use(express.static('build/client', { maxAge: '1h' }))
 
+// Serve the test HTML file
+app.get('/test-agent', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/test-agent.html'))
+})
+
 app.use(morgan('tiny'))
 
 AuthenticationServer.expressSetup(app)
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id)
+  
+  socket.on('runAgent', async (userMessage) => {
+    try {
+      console.log("Received some data:::")
+      // Call the React agent with the user's message
+      const response = await callReactAgent(userMessage)
+      // Stream each chunk as it comes
+      for await (let chunk of response.messages) {
+        if(chunk.additional_kwargs.role == 'assistant') {
+          socket.emit('agentResponse', chunk)
+        }
+      }
+      
+      // Signal completion
+      socket.emit('agentComplete')
+    } catch (error) {
+      console.error('Error running agent:', error)
+      socket.emit('agentError', { message: error.message || 'Unknown error occurred' })
+    }
+  })
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id)
+  })
+})
 
 app.all('*', remixHandler)
 
