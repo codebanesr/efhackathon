@@ -1,6 +1,7 @@
-import { Button, Card, Col, Input, Row, Space, Steps, Table, Tabs, Tag, Typography, message } from 'antd'
-import { useState } from 'react'
-import { GithubOutlined, SearchOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons'
+
+import { Button, Card, Col, Input, Row, Space, Steps, Table, Tabs, Tag, Typography, message, List, Empty } from 'antd'
+import { useEffect, useState } from 'react'
+import { GithubOutlined, SearchOutlined, LoadingOutlined, CheckCircleOutlined, FolderOutlined, FileOutlined } from '@ant-design/icons'
 import { Api } from '@/core/trpc'
 
 const { Title, Text, Paragraph } = Typography
@@ -74,9 +75,12 @@ const initialChatMessages = [
   }
 ]
 
+// Replace the mock repositories and search function with real GitHub API calls
+// Update in the component:
+
 export default function RepositoriesPage() {
   const [searchValue, setSearchValue] = useState('')
-  const [repositories, setRepositories] = useState(mockRepositories)
+  const [repositories, setRepositories] = useState([])
   const [selectedRepo, setSelectedRepo] = useState(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -84,57 +88,130 @@ export default function RepositoriesPage() {
   const [chatInput, setChatInput] = useState('')
   const [activeTab, setActiveTab] = useState('repositories')
   const [isAiLoading, setIsAiLoading] = useState(false)
-
+  const [isSearching, setIsSearching] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [clonedRepos, setClonedRepos] = useState([])
+  const [repoFiles, setRepoFiles] = useState([])
+  const [selectedClonedRepo, setSelectedClonedRepo] = useState(null)
 
   const aiCaller = Api.ai.generateText.useMutation();
+  const searchGithubRepos = Api.ai.searchGithubRepositories.useQuery(
+    { query: searchValue || 'stars:>1000', page: currentPage, perPage: 10 },
+    { enabled: false }
+  );
+  const cloneRepo = Api.ai.cloneRepository.useMutation();
+  const listRepoFiles = Api.ai.listRepositoryFiles.useMutation();
 
-  // Mock repository search function
-  const handleSearch = () => {
-    if (!searchValue.trim()) {
-      setRepositories(mockRepositories)
-      return
+  // Load popular repositories on initial load
+  useEffect(() => {
+    if (repositories.length === 0 && !isSearching) {
+      handleSearch();
     }
-    
-    // Simple mock search
-    const filteredRepos = mockRepositories.filter(repo => 
-      repo.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-      repo.description.toLowerCase().includes(searchValue.toLowerCase())
-    )
-    setRepositories(filteredRepos)
-  }
+  }, []);
 
-  // Mock clone function with workflow steps
-  const handleClone = (repo) => {
-    message.info(`Cloning repository: ${repo.name}`)
-    setSelectedRepo(repo)
-    setIsProcessing(true)
-    setCurrentStep(0)
-
-    // Mock the workflow steps with timeouts
-    const stepDurations = [3000, 4000, 2000, 5000, 2000, 3000]
-    
-    let currentStepIndex = 0
-    const processStep = () => {
-      if (currentStepIndex < workflowSteps.length) {
-        setTimeout(() => {
-          setCurrentStep(currentStepIndex + 1)
-          currentStepIndex++
-          processStep()
-        }, stepDurations[currentStepIndex])
-      } else {
-        // Workflow completed
-        setIsProcessing(false)
-        message.success(`Repository ${repo.name} successfully processed and deployed!`)
-        
-        // Add the repo to the list if it's not already there
-        if (!repositories.find(r => r.id === repo.id)) {
-          setRepositories([...repositories, {...repo, status: 'deployed'}])
-        }
+  // Real repository search function
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      const result = await searchGithubRepos.refetch();
+      if (result.data) {
+        setRepositories(result.data.repositories);
+        setTotalCount(result.data.totalCount);
+        setCurrentPage(result.data.currentPage);
       }
+    } catch (error) {
+      console.error('Error searching repositories:', error);
+      message.error('Failed to search repositories');
+    } finally {
+      setIsSearching(false);
     }
+  };
+
+  // Real clone function with workflow steps
+  const handleClone = async (repo) => {
+    message.info(`Cloning repository: ${repo.name}`);
+    setSelectedRepo(repo);
+    setIsProcessing(true);
+    setCurrentStep(0);
+
+    try {
+      // Extract owner and repo name
+      const [owner, repoName] = repo.name.split('/');
+      
+      // Start the clone process
+      const result = await cloneRepo.mutateAsync({
+        repositoryUrl: repo.cloneUrl || `https://github.com/${repo.name}.git`,
+        repositoryName: repo.name,
+        branch: repo.defaultBranch || 'main',
+        targetDirectory: '/tmp/ef' // Clone to /tmp/ef directory
+      });
+      
+      // Mock the workflow steps with timeouts to show progress
+      const stepDurations = [3000, 4000, 2000, 5000, 2000, 3000];
+      
+      let currentStepIndex = 0;
+      const processStep = () => {
+        if (currentStepIndex < workflowSteps.length) {
+          setTimeout(() => {
+            setCurrentStep(currentStepIndex + 1);
+            currentStepIndex++;
+            processStep();
+          }, stepDurations[currentStepIndex]);
+        } else {
+          // Workflow completed
+          setIsProcessing(false);
+          message.success(`Repository ${repo.name} successfully processed and deployed!`);
+          
+          // Update the repository status in the list
+          setRepositories(prevRepos => 
+            prevRepos.map(r => 
+              r.id === repo.id ? {...r, status: 'deployed'} : r
+            )
+          );
+          
+          // Add to cloned repositories
+          setClonedRepos(prevClonedRepos => {
+            // Check if repo already exists in clonedRepos
+            const exists = prevClonedRepos.some(r => r.id === repo.id);
+            if (!exists) {
+              return [...prevClonedRepos, {...repo, clonePath: `/tmp/ef/${repoName || repo.name.split('/')[1]}`}];
+            }
+            return prevClonedRepos;
+          });
+        }
+      };
+      
+      processStep();
+    } catch (error) {
+      console.error('Error cloning repository:', error);
+      message.error('Failed to clone repository');
+      setIsProcessing(false);
+    }
+  };
+
+  // Function to list files from a cloned repository
+  const handleListFiles = async (repo) => {
+    setSelectedClonedRepo(repo);
+    setRepoFiles([]);
     
-    processStep()
-  }
+    try {
+      const repoPath = repo.clonePath || `/tmp/ef/${repo.name.split('/')[1]}`;
+      const result = await listRepoFiles.mutateAsync({
+        repositoryPath: repoPath
+      });
+      
+      if (result && result.files) {
+        setRepoFiles(result.files);
+      } else {
+        setRepoFiles([]);
+        message.info('No files found or directory does not exist');
+      }
+    } catch (error) {
+      console.error('Error listing repository files:', error);
+      message.error('Failed to list repository files');
+    }
+  };
 
   // Updated chat function to use AI router
   const handleSendMessage = async () => {
@@ -201,30 +278,6 @@ export default function RepositoriesPage() {
       key: 'description',
     },
     {
-      title: 'Language',
-      dataIndex: 'language',
-      key: 'language',
-      render: text => <Tag color="blue">{text}</Tag>
-    },
-    {
-      title: 'Stars',
-      dataIndex: 'stars',
-      key: 'stars',
-      render: stars => `⭐ ${stars.toLocaleString()}`
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: status => {
-        if (status === 'deployed') 
-          return <Tag color="green">Deployed</Tag>
-        if (status === 'building') 
-          return <Tag color="processing">Building</Tag>
-        return <Tag color="default">Not deployed</Tag>
-      }
-    },
-    {
       title: 'Action',
       key: 'action',
       render: (_, record) => (
@@ -236,7 +289,6 @@ export default function RepositoriesPage() {
           >
             Clone & Deploy
           </Button>
-          <Button>View Details</Button>
         </Space>
       ),
     },
@@ -271,9 +323,21 @@ export default function RepositoriesPage() {
                       value={searchValue}
                       onChange={e => setSearchValue(e.target.value)}
                       onPressEnter={handleSearch}
+                      disabled={isSearching}
                     />
-                    <Button type="primary" onClick={handleSearch}>Search</Button>
-                    <Button type="link" onClick={() => handleClone({ id: '999', name: searchValue, description: 'Custom repository', language: 'Unknown', stars: 0, forks: 0 })} disabled={!searchValue.trim()}>
+                    <Button 
+                      type="primary" 
+                      onClick={handleSearch} 
+                      loading={isSearching}
+                      disabled={isSearching}
+                    >
+                      Search
+                    </Button>
+                    <Button 
+                      type="link" 
+                      onClick={() => handleClone({ id: '999', name: searchValue, description: 'Custom repository', language: 'Unknown', stars: 0, forks: 0 })} 
+                      disabled={!searchValue.trim()}
+                    >
                       Quick Clone
                     </Button>
                   </Input.Group>
@@ -282,7 +346,16 @@ export default function RepositoriesPage() {
                     dataSource={repositories} 
                     columns={columns} 
                     rowKey="id"
-                    pagination={{ pageSize: 5 }}
+                    pagination={{ 
+                      pageSize: 5,
+                      total: totalCount,
+                      current: currentPage,
+                      onChange: (page) => {
+                        setCurrentPage(page);
+                        handleSearch();
+                      }
+                    }}
+                    loading={isSearching}
                   />
                 </Space>
               </Card>
@@ -394,6 +467,79 @@ CMD ["npm", "start"]`}
               </div>
             </Card>
           )}
+        </TabPane>
+        
+        <TabPane tab="Cloned Repositories" key="cloned">
+          <Row gutter={[24, 24]}>
+            <Col span={12}>
+              <Card title="Cloned Repositories">
+                {clonedRepos.length === 0 ? (
+                  <Empty description="No repositories cloned yet" />
+                ) : (
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={clonedRepos}
+                    renderItem={item => (
+                      <List.Item
+                        actions={[
+                          <Button type="primary" onClick={() => handleListFiles(item)}>
+                            View Files
+                          </Button>
+                        ]}
+                      >
+                        <List.Item.Meta
+                          avatar={<GithubOutlined style={{ fontSize: '24px' }} />}
+                          title={item.name}
+                          description={
+                            <Space direction="vertical">
+                              <Text>{item.description}</Text>
+                              <Text type="secondary">Cloned to: {item.clonePath}</Text>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </Card>
+            </Col>
+            
+            <Col span={12}>
+              <Card 
+                title={selectedClonedRepo ? `Files in ${selectedClonedRepo.name}` : "Repository Files"}
+                extra={selectedClonedRepo && (
+                  <Text type="secondary">Path: {selectedClonedRepo.clonePath}</Text>
+                )}
+              >
+                {!selectedClonedRepo ? (
+                  <Empty description="Select a repository to view files" />
+                ) : repoFiles.length === 0 ? (
+                  <Empty description="No files found or still loading..." />
+                ) : (
+                  <List
+                    size="small"
+                    bordered
+                    dataSource={repoFiles}
+                    renderItem={file => (
+                      <List.Item>
+                        <Space>
+                          {file.isDirectory ? (
+                            <FolderOutlined />
+                          ) : (
+                            <FileOutlined />
+                          )}
+                          <Text>{file.name}</Text>
+                        </Space>
+                        {!file.isDirectory && (
+                          <Text type="secondary">{file.size} bytes</Text>
+                        )}
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </Card>
+            </Col>
+          </Row>
         </TabPane>
         
         <TabPane tab="Container Management" key="containers">
