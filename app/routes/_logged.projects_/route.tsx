@@ -1,9 +1,10 @@
 import { PageLayout } from '@/designSystem/layouts/PageLayout'
 import { Card, Typography, List, Button, Input, Form, Space, Divider, message, Alert, Spin, Avatar, Progress, Collapse, Tag } from 'antd'
 import { useState, useEffect, useRef } from 'react'
-import { FolderOutlined, PlusOutlined, DeleteOutlined, FolderOpenOutlined, SendOutlined, RobotOutlined, CheckCircleOutlined, LoadingOutlined, GlobalOutlined, CodeOutlined } from '@ant-design/icons'
+import { FolderOutlined, PlusOutlined, DeleteOutlined, FolderOpenOutlined, SendOutlined, RobotOutlined, CheckCircleOutlined, LoadingOutlined, GlobalOutlined, CodeOutlined, BarChartOutlined, LineChartOutlined } from '@ant-design/icons'
 import { Api } from '@/core/trpc'
 import { motion } from 'framer-motion'
+import { useNavigate } from '@remix-run/react'
 
 // Add FileSystem Access API types
 declare global {
@@ -33,6 +34,7 @@ interface DeploymentLog {
 }
 
 export default function ProjectsPage() {
+  const navigate = useNavigate()
   const [form] = Form.useForm()
   const [editMode, setEditMode] = useState(false)
   const [selectedPath, setSelectedPath] = useState('')
@@ -48,7 +50,14 @@ export default function ProjectsPage() {
   const [waitingForDomain, setWaitingForDomain] = useState(false)
   const [deployProgress, setDeployProgress] = useState(0)
   const [deployLogs, setDeployLogs] = useState<DeploymentLog[]>([])
+  const [deploymentId, setDeploymentId] = useState<string>('')
   const chatEndRef = useRef<HTMLDivElement>(null)
+  
+  // Navigate to observability page for a specific deployment
+  const viewDeploymentLogs = () => {
+    // Use the full path format matching the route pattern
+    navigate('/devops/observability')
+  }
   
   // Query projects from the database
   const { data: projects, isLoading, refetch } = Api.project.findMany.useQuery()
@@ -260,7 +269,23 @@ export default function ProjectsPage() {
         
         // End deployment when all steps are complete
         if (currentDeployStep === deploymentSteps.length - 1) {
-          setIsDeploying(false)
+          // Generate a unique deployment ID
+          const newDeploymentId = `deploy-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          setDeploymentId(newDeploymentId);
+          
+          // Add the View Logs button after a short delay
+          setTimeout(() => {
+            addBotMessage(
+              `View detailed logs and metrics for this deployment:`,
+              false,
+              false,
+              undefined,
+              undefined,
+              'view-logs-button'
+            );
+          }, 1000);
+          
+          setIsDeploying(false);
         }
       }, randomDelay)
       
@@ -325,12 +350,13 @@ export default function ProjectsPage() {
     isLog: boolean = false, 
     requiresInput: boolean = false, 
     inputType?: 'domain',
-    logDetails?: DeploymentLog[]
+    logDetails?: DeploymentLog[],
+    messageId?: string
   ) => {
     setChatMessages(prev => [
       ...prev, 
       { 
-        id: Date.now().toString(), 
+        id: messageId || Date.now().toString(), 
         text, 
         sender: 'bot', 
         timestamp: new Date(),
@@ -661,7 +687,7 @@ export default function ProjectsPage() {
               }}
             >
               {/* Regular message bubble */}
-              {!msg.requiresInput && (
+              {!msg.requiresInput && msg.id !== 'view-logs-button' && (
                 <div style={{
                   backgroundColor: msg.sender === 'user' ? '#1677ff' : '#f0f0f0',
                   color: msg.sender === 'user' ? 'white' : 'black',
@@ -680,10 +706,11 @@ export default function ProjectsPage() {
                         ghost 
                         size="small"
                         expandIconPosition="end"
+                        defaultActiveKey={['1']}
                         items={[
                           {
                             key: '1',
-                            label: <Typography.Text strong>Show Details</Typography.Text>,
+                            label: <Typography.Text strong>Operation Details</Typography.Text>,
                             children: (
                               <div style={{ 
                                 backgroundColor: '#000', 
@@ -767,8 +794,34 @@ export default function ProjectsPage() {
                 </div>
               )}
               
+              {/* View Logs button */}
+              {msg.id === 'view-logs-button' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  width: '100%',
+                  marginTop: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <Button
+                    type="primary"
+                    icon={<BarChartOutlined />}
+                    size="large"
+                    onClick={viewDeploymentLogs}
+                    style={{
+                      borderRadius: '8px',
+                      padding: '0 20px',
+                      height: '44px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                    }}
+                  >
+                    View Deployment Logs & Metrics
+                  </Button>
+                </div>
+              )}
+              
               {/* Message timestamp */}
-              {!msg.requiresInput && (
+              {!msg.requiresInput && msg.id !== 'view-logs-button' && (
                 <Typography.Text type="secondary" style={{ 
                   fontSize: '11px', 
                   display: 'block', 
