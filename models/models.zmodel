@@ -21,6 +21,7 @@ model User {
     updatedAt         DateTime           @updatedAt @default(now())
 
     organizationRoles OrganizationRole[]
+    projects          Project[]          // Relation to projects
 
     @@auth()
     @@allow("all", auth().id == this.id)
@@ -65,5 +66,22 @@ model OrganizationRole {
     @@allow('create', organization.roles?[user == auth()] && name != 'owner')
     @@allow('read', organization.roles?[user == auth()])
     @@allow('delete', auth() == user)
+}
+
+model Project {
+    id          String   @id @default(uuid())
+    name        String
+    path        String
+    description String?
+    isActive    Boolean  @default(true)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt @default(now())
+
+    userId      String   @default(auth().id)
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    // Allow users to manage their own projects
+    @@allow('all', auth().id == userId)
+    @@allow('all', auth().globalRole == 'ADMIN')
 }
 
