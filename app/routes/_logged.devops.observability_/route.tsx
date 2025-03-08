@@ -1,11 +1,24 @@
-import { Card, Col, Row, Select, Table, Tabs, Tag, Typography, Alert, Button, Space, Badge, Progress, message } from 'antd'
-import { useState, useEffect } from 'react'
+import { Card, Col, Row, Select, Table, Tabs, Tag, Typography, Alert, Button, Space, Badge, Progress, message, Avatar, Input, Collapse } from 'antd'
+import { useState, useEffect, useRef } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
-import { InfoCircleOutlined, WarningOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { InfoCircleOutlined, WarningOutlined, ClockCircleOutlined, CheckCircleOutlined, RobotOutlined, SendOutlined } from '@ant-design/icons'
+import { motion } from 'framer-motion'
 
 const { Title, Text, Paragraph } = Typography
 const { TabPane } = Tabs
 const { Option } = Select
+
+// Define chat message interface
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  isLog?: boolean;
+  logDetails?: any[];
+  requiresInput?: boolean;
+  inputType?: string;
+}
 
 // Mock log data
 const generateMockLogs = (system, count = 50) => {
@@ -151,6 +164,233 @@ export default function ObservabilityDashboard() {
   const [timeRange, setTimeRange] = useState('24h')
   const [deploymentId, setDeploymentId] = useState<string>('')
   
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Scroll to bottom of chat when messages change
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatMessages])
+
+  // Chat functions
+  const addUserMessage = (text: string) => {
+    setChatMessages(prev => [
+      ...prev, 
+      { 
+        id: Date.now().toString(), 
+        text, 
+        sender: 'user', 
+        timestamp: new Date() 
+      }
+    ])
+  }
+
+  const addBotMessage = (text: string, isLog: boolean = false, logDetails?: any[], requiresInput: boolean = false, inputType?: string) => {
+    setChatMessages(prev => [
+      ...prev, 
+      { 
+        id: Date.now().toString(), 
+        text, 
+        sender: 'bot', 
+        timestamp: new Date(),
+        isLog,
+        logDetails,
+        requiresInput,
+        inputType
+      }
+    ])
+  }
+
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return
+    
+    addUserMessage(chatInput)
+    
+    // Find the most recent alert mentioned in the chat
+    const lastBotMessage = [...chatMessages].reverse().find(msg => 
+      msg.sender === 'bot' && msg.text.includes('alert:')
+    )
+    
+    // Extract alert details from the last bot message
+    const alertDetails = lastBotMessage?.text.match(/with the (\w+) alert: "([^"]+)"/)
+    
+    if (chatInput.toLowerCase().includes('resolve') || 
+        chatInput.toLowerCase().includes('fix') || 
+        chatInput.toLowerCase().includes('handle')) {
+      
+      if (alertDetails) {
+        const [_, severity, message] = alertDetails
+        
+        // Find the corresponding alert from our alerts state
+        const alert = alerts.find(a => 
+          a.severity === severity.toLowerCase() && 
+          a.message === message
+        )
+        
+        if (alert) {
+          setTimeout(() => {
+            // First, acknowledge the request
+            addBotMessage("I'll help you analyze and resolve this alert. Let me break down the problem and suggest solutions.")
+            
+            setTimeout(() => {
+              // Send analysis based on alert type
+              if (alert.message.includes('CPU utilization')) {
+                // First message - Analyzing logs
+                addBotMessage(`Analyzing system logs for the CPU utilization spike...`);
+                
+                setTimeout(() => {
+                  // Second message - Checking inbound network calls
+                  addBotMessage(`Checking inbound network traffic patterns...`);
+                  
+                  setTimeout(() => {
+                    // Third message - Tracking IPs
+                    addBotMessage(`Tracking IP addresses with unusual activity patterns...`);
+                    
+                    setTimeout(() => {
+                      // Fourth message - DDOS alert with button
+                      addBotMessage(`⚠️ Alert: Detected potential DDoS attack pattern!
+                      
+Analysis shows:
+- Multiple requests from similar IP ranges
+- Abnormal traffic spike (10x normal load)
+- Request pattern indicates automated behavior
+
+Would you like me to implement rate limiting to mitigate this attack?`, false, undefined, true, 'button');
+                    }, 2000);
+                  }, 2000);
+                }, 2000);
+              } else if (alert.message.includes('connection pool')) {
+                addBotMessage(`
+Here's my analysis of the database connection pool alert:
+
+1. Root Cause Analysis:
+   - Connection pool approaching maximum capacity
+   - Possible causes:
+     * Connection leaks in application code
+     * Inefficient connection management
+     * Sudden increase in user traffic
+     * Long-running queries holding connections
+
+2. Immediate Actions:
+   - Monitor active database connections
+   - Check for long-running transactions
+   - Review connection timeout settings
+   - Consider increasing pool size temporarily
+
+3. Long-term Solutions:
+   - Implement connection pooling best practices
+   - Add connection leak detection
+   - Optimize query patterns
+   - Consider read replicas for load distribution
+
+Would you like me to provide more details about any of these solutions?`)
+              } else if (alert.message.includes('404 responses')) {
+                addBotMessage(`
+Here's my analysis of the increased 404 responses:
+
+1. Root Cause Analysis:
+   - Spike in "Not Found" responses
+   - Possible causes:
+     * Recent deployment with broken links
+     * Misconfigured routes
+     * Cache invalidation issues
+     * Client-side routing problems
+
+2. Immediate Actions:
+   - Review recent deployments
+   - Check server access logs
+   - Verify routing configuration
+   - Monitor user reports
+
+3. Long-term Solutions:
+   - Implement automated link checking
+   - Add route testing in CI/CD
+   - Improve deployment rollback procedures
+   - Set up better monitoring for 4xx errors
+
+Would you like me to explain any of these points in more detail?`)
+              } else if (alert.message.includes('Memory leak')) {
+                addBotMessage(`
+Here's my analysis of the memory leak alert:
+
+1. Root Cause Analysis:
+   - Memory usage continuously increasing
+   - Possible causes:
+     * Unbounded caching
+     * Unclosed resources or connections
+     * Event listener accumulation
+     * Large object retention
+
+2. Immediate Actions:
+   - Take heap dumps for analysis
+   - Restart affected containers
+   - Monitor memory usage patterns
+   - Review recent code changes
+
+3. Long-term Solutions:
+   - Implement memory profiling
+   - Add automated memory monitoring
+   - Review garbage collection settings
+   - Set up container resource limits
+
+Would you like me to dive deeper into any of these areas?`)
+              } else {
+                addBotMessage(`
+Here's my general analysis for this alert:
+
+1. Root Cause Analysis:
+   - Review service logs and metrics
+   - Check for correlated events
+   - Analyze recent changes
+   - Monitor system resources
+
+2. Immediate Actions:
+   - Assess impact on service
+   - Review related components
+   - Check system health
+   - Document findings
+
+3. Long-term Solutions:
+   - Implement better monitoring
+   - Review alert thresholds
+   - Update runbooks
+   - Plan preventive measures
+
+Would you like me to provide more specific details?`)
+              }
+            }, 1000)
+          }, 500)
+        } else {
+          addBotMessage("I'm here to help you understand and resolve any alerts. Could you please specify which alert you're asking about?")
+        }
+      } else {
+        addBotMessage("I'm here to help you understand and resolve any alerts. Could you please specify which alert you're asking about?")
+      }
+    } else {
+      // Generic response for other queries
+      setTimeout(() => {
+        addBotMessage("I'm here to help you understand and resolve any alerts. What would you like to know?")
+      }, 1000)
+    }
+    
+    setChatInput('')
+  }
+
+  const toggleChat = () => {
+    setIsChatOpen(prev => !prev)
+    if (!isChatOpen && chatMessages.length === 0) {
+      // Add welcome message when opening chat for the first time
+      setTimeout(() => {
+        addBotMessage("Hello! I'm your alerts assistant. How can I help you understand and resolve any alerts today?")
+      }, 500)
+    }
+  }
+
   // Check for deployment ID in localStorage
   useEffect(() => {
     try {
@@ -599,7 +839,18 @@ export default function ObservabilityDashboard() {
                   key: 'actions',
                   render: (_, record) => (
                     <Space>
-                      <Button size="small" type="primary">View Details</Button>
+                      <Button 
+                        size="small" 
+                        type="primary"
+                        onClick={() => {
+                          toggleChat();
+                          setTimeout(() => {
+                            addBotMessage(`Let me help you with the ${record.severity} alert: "${record.message}". What would you like to know about this alert?`);
+                          }, 500);
+                        }}
+                      >
+                        View Details
+                      </Button>
                       {record.status === 'active' && (
                         <Button 
                           size="small"
@@ -628,6 +879,214 @@ export default function ObservabilityDashboard() {
           </Card>
         </TabPane>
       </Tabs>
+
+      {/* Chat Widget Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000
+        }}
+      >
+        <Button
+          type="primary"
+          shape="circle"
+          size="large"
+          icon={<RobotOutlined />}
+          onClick={toggleChat}
+          style={{ 
+            width: '60px', 
+            height: '60px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        />
+      </motion.div>
+
+      {/* Chat Widget Panel */}
+      <motion.div
+        initial={{ opacity: 0, x: 300 }}
+        animate={{ 
+          opacity: isChatOpen ? 1 : 0, 
+          x: isChatOpen ? 0 : 300,
+          pointerEvents: isChatOpen ? 'all' : 'none'
+        }}
+        transition={{ duration: 0.3 }}
+        style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          width: '450px', 
+          height: 'calc(100vh - 160px)',
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 999
+        }}
+      >
+        {/* Chat Header */}
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: '1px solid #f0f0f0', 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1677ff' }} />
+            <Typography.Title level={5} style={{ margin: 0 }}>Alerts Assistant</Typography.Title>
+          </div>
+          <Button 
+            type="text" 
+            shape="circle" 
+            icon={<span>×</span>} 
+            onClick={toggleChat}
+            style={{ fontSize: '20px', fontWeight: 'bold' }}
+          />
+        </div>
+
+        {/* Chat Messages */}
+        <div style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          {chatMessages.map(msg => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: msg.isLog ? '90%' : '80%',
+                width: msg.isLog ? '90%' : 'auto'
+              }}
+            >
+              {/* Regular message bubble */}
+              <div style={{
+                backgroundColor: msg.sender === 'user' ? '#1677ff' : '#f0f0f0',
+                color: msg.sender === 'user' ? 'white' : 'black',
+                padding: '10px 14px',
+                borderRadius: '18px',
+                borderBottomRightRadius: msg.sender === 'user' ? '4px' : '18px',
+                borderBottomLeftRadius: msg.sender === 'bot' ? '4px' : '18px',
+                width: msg.isLog ? '100%' : 'auto'
+              }}>
+                {msg.text}
+                
+                {/* Collapsible logs */}
+                {msg.isLog && msg.logDetails && msg.logDetails.length > 0 && (
+                  <div style={{ marginTop: '10px' }}>
+                    <Collapse 
+                      ghost 
+                      size="small"
+                      expandIconPosition="end"
+                      items={[
+                        {
+                          key: '1',
+                          label: <Typography.Text strong>Show Details</Typography.Text>,
+                          children: (
+                            <div style={{ 
+                              backgroundColor: '#000', 
+                              color: '#fff', 
+                              padding: '12px', 
+                              borderRadius: '4px', 
+                              maxHeight: '200px', 
+                              overflowY: 'auto',
+                              fontFamily: 'monospace',
+                              fontSize: '12px'
+                            }}>
+                              {msg.logDetails.map((log, index) => (
+                                <div key={index} style={{ marginBottom: '6px' }}>
+                                  {JSON.stringify(log, null, 2)}
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        }
+                      ]}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Message timestamp */}
+              <Typography.Text type="secondary" style={{ 
+                fontSize: '11px', 
+                display: 'block', 
+                marginTop: '4px',
+                textAlign: msg.sender === 'user' ? 'right' : 'left'
+              }}>
+                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Typography.Text>
+
+              {/* Rate limit button */}
+              {msg.requiresInput && msg.inputType === 'button' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  width: '100%',
+                  marginTop: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <Button
+                    type="primary"
+                    danger
+                    size="large"
+                    onClick={() => {
+                      // Handle rate limit implementation
+                      addBotMessage("✅ Rate limiting has been implemented successfully! I've configured the following measures:\n\n- Maximum 100 requests per minute per IP\n- IP-based request throttling enabled\n- Automatic blocking of suspicious traffic patterns\n\nThe system is now protected against DDoS attacks.");
+                    }}
+                    style={{
+                      borderRadius: '8px',
+                      padding: '0 20px',
+                      height: '44px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                    }}
+                  >
+                    Enable Rate Limiting
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Chat Input */}
+        <div style={{ 
+          padding: '16px', 
+          borderTop: '1px solid #f0f0f0',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <Input
+            placeholder="Type a message..."
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onPressEnter={handleSendMessage}
+            style={{ flex: 1 }}
+          />
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={handleSendMessage}
+            disabled={!chatInput.trim()}
+          />
+        </div>
+      </motion.div>
     </div>
   )
 }
