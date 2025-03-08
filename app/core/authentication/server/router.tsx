@@ -16,7 +16,10 @@ export const AuthenticationRouter = Trpc.createRouter({
       where: { id: ctx.session.user.id },
     })
 
-    return { user }
+    // Get GitHub access token from JWT if available
+    const githubAccessToken = ctx.session.githubAccessToken
+
+    return { user, githubAccessToken }
   }),
 
   logout: Trpc.procedurePublic.mutation(async ({ ctx }) => {
