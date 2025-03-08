@@ -116,7 +116,7 @@ export const fileTool = tool(
       operation: z.enum(["create", "read", "delete", "list", "exists", "append"])
         .describe("The file operation to perform"),
         projectName: z.string()
-        .describe("Project name of the cloned repository"),
+        .describe("Project name"),
       content: z.string().optional()
         .describe("Content to write to the file (for create and append operations)"),
       recursive: z.boolean().optional().default(true)
