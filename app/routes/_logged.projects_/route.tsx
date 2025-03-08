@@ -227,13 +227,15 @@ export default function ProjectsPage() {
     if (isDeploying && currentDeployStep < deploymentSteps.length) {
       // Don't auto-advance if waiting for domain input
       if (currentDeployStep === 0 && !domainName) {
-        setWaitingForDomain(true)
-        const step = deploymentSteps[currentDeployStep]
-        addBotMessage(step.message, false, true, 'domain')
+        if (!waitingForDomain) {  // Only show the prompt once
+          setWaitingForDomain(true)
+          const step = deploymentSteps[currentDeployStep]
+          addBotMessage(step.message, false, true, 'domain')
+        }
         return
       }
       
-      const randomDelay = Math.floor(Math.random() * 2000) + 1000 // Random delay between 1-3 seconds
+      const randomDelay = Math.floor(Math.random() * 2000) + 1500 // Random delay between 1.5-3.5 seconds
       
       const timer = setTimeout(() => {
         const step = deploymentSteps[currentDeployStep]
@@ -393,8 +395,10 @@ export default function ProjectsPage() {
       // Start deployment sequence
       setTimeout(() => {
         addBotMessage(`I'll help you deploy ${projectName}!`)
-        setIsDeploying(true)
-        setCurrentDeployStep(0)
+        setTimeout(() => {
+          setIsDeploying(true)
+          setCurrentDeployStep(0)
+        }, 1000)
       }, 1000)
     } else {
       // Generic response for non-deployment messages
@@ -578,7 +582,7 @@ export default function ProjectsPage() {
           position: 'fixed',
           top: '80px',
           right: '20px',
-          width: '350px',
+          width: '450px', 
           height: 'calc(100vh - 160px)',
           backgroundColor: 'white',
           borderRadius: '8px',
@@ -728,30 +732,37 @@ export default function ProjectsPage() {
               {msg.requiresInput && msg.inputType === 'domain' && (
                 <div style={{
                   backgroundColor: '#f0f0f0',
-                  padding: '16px',
+                  padding: '20px',
                   borderRadius: '12px',
-                  width: '100%'
+                  width: '100%',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #d9d9d9'
                 }}>
-                  <Typography.Text strong style={{ display: 'block', marginBottom: '12px' }}>
-                    <GlobalOutlined style={{ marginRight: '8px' }} />
+                  <Typography.Title level={5} style={{ marginBottom: '16px' }}>
+                    <GlobalOutlined style={{ marginRight: '10px', color: '#1677ff' }} />
                     {msg.text}
-                  </Typography.Text>
+                  </Typography.Title>
                   
                   <Input
+                    size="large"
                     placeholder="yourdomain.com" 
-                    prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
+                    prefix={<GlobalOutlined style={{ color: '#1677ff' }} />}
                     value={domainName}
                     onChange={e => setDomainName(e.target.value)}
                     onPressEnter={handleDomainSubmit}
-                    style={{ marginBottom: '8px' }}
+                    style={{ marginBottom: '12px' }}
+                    autoFocus
                   />
                   
                   <Button 
                     type="primary" 
+                    size="large"
                     onClick={handleDomainSubmit}
                     disabled={!domainName.trim()}
+                    icon={<SendOutlined />}
+                    style={{ width: '100%' }}
                   >
-                    Continue
+                    Continue with this domain
                   </Button>
                 </div>
               )}
