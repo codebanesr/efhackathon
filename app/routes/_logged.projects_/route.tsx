@@ -5,6 +5,7 @@ import { FolderOutlined, PlusOutlined, DeleteOutlined, FolderOpenOutlined, SendO
 import { Api } from '@/core/trpc'
 import { motion } from 'framer-motion'
 import { useNavigate } from '@remix-run/react'
+import { GitHubRepoSelector } from '~/components/GitHubRepoSelector'
 
 // Add FileSystem Access API types
 declare global {
@@ -303,6 +304,21 @@ export default function ProjectsPage() {
     })
   }
 
+  const handleGitHubRepoSelect = (repo: any) => {
+    createProject.mutate({
+      data: {
+        name: repo.name,
+        path: repo.html_url,
+        description: repo.description || '',
+        githubRepoUrl: repo.html_url,
+        githubRepoId: repo.id,
+        githubRepoOwner: repo.owner.login,
+        githubRepoName: repo.name,
+        githubBranch: repo.default_branch,
+      }
+    })
+  }
+
   const removeProject = (id: string) => {
     deleteProject.mutate({
       where: { id }
@@ -461,15 +477,18 @@ export default function ProjectsPage() {
       <Card>
         <Space direction="vertical" style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography.Title level={4}>Local Projects</Typography.Title>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
-              onClick={() => setEditMode(true)}
-              disabled={editMode || createProject.isLoading}
-            >
-              Add Project
-            </Button>
+            <Typography.Title level={4}>Projects</Typography.Title>
+            <Space>
+              <GitHubRepoSelector onSelect={handleGitHubRepoSelect} />
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={() => setEditMode(true)}
+                disabled={editMode || createProject.isLoading}
+              >
+                Add Local Project
+              </Button>
+            </Space>
           </div>
           
           {editMode && (

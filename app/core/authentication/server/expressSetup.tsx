@@ -4,8 +4,9 @@ import passport from 'passport'
 import { Configuration } from '~/core/configuration'
 import { COOKIE_MAX_AGE, Cookies } from './cookies'
 import { GoogleProvider } from './providers/google.provider'
+import { GitHubProvider } from './providers/github.provider'
 
-const providers = [GoogleProvider]
+const providers = [GoogleProvider, GitHubProvider]
 
 export const getProviders = () => {
   return providers.filter(provider => provider.isActive())
