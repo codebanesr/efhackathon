@@ -8,14 +8,10 @@ import { GitHubProvider } from './providers/github.provider'
 
 const providers = [GoogleProvider, GitHubProvider]
 
-export const getProviders = () => {
-  return providers.filter(provider => provider.isActive())
-}
 
 export const expressSetup = (app: Express) => {
   app.use(passport.initialize())
 
-  getProviders().forEach(provider => passport.use(provider.strategy))
 
   app.get('/api/auth/:provider', (req, res, next) => {
     const provider = req.params.provider

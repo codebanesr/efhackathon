@@ -58,9 +58,9 @@ export default function DeploymentsPage() {
   const [deployments, setDeployments] = useState<Deployment[]>([
     {
       id: '1',
-      projectName: 'E-commerce Platform',
-      version: 'v1.2.3',
-      deploymentTime: new Date('2024-07-31T08:30:00'),
+      projectName: 'Gass',
+      version: 'v1.0.0',
+      deploymentTime: new Date('2025-03-09T00:30:00'),
       deployedBy: 'Shanur',
       status: 'success',
       environment: 'production'
