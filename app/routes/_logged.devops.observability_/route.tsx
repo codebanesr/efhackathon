@@ -16,6 +16,8 @@ interface ChatMessage {
   timestamp: Date;
   isLog?: boolean;
   logDetails?: any[];
+  requiresInput?: boolean;
+  inputType?: string;
 }
 
 // Mock log data
@@ -188,7 +190,7 @@ export default function ObservabilityDashboard() {
     ])
   }
 
-  const addBotMessage = (text: string, isLog: boolean = false, logDetails?: any[]) => {
+  const addBotMessage = (text: string, isLog: boolean = false, logDetails?: any[], requiresInput: boolean = false, inputType?: string) => {
     setChatMessages(prev => [
       ...prev, 
       { 
@@ -197,7 +199,9 @@ export default function ObservabilityDashboard() {
         sender: 'bot', 
         timestamp: new Date(),
         isLog,
-        logDetails
+        logDetails,
+        requiresInput,
+        inputType
       }
     ])
   }
@@ -236,30 +240,30 @@ export default function ObservabilityDashboard() {
             setTimeout(() => {
               // Send analysis based on alert type
               if (alert.message.includes('CPU utilization')) {
-                addBotMessage(`
-Here's my analysis of the CPU utilization alert:
+                // First message - Analyzing logs
+                addBotMessage(`Analyzing system logs for the CPU utilization spike...`);
+                
+                setTimeout(() => {
+                  // Second message - Checking inbound network calls
+                  addBotMessage(`Checking inbound network traffic patterns...`);
+                  
+                  setTimeout(() => {
+                    // Third message - Tracking IPs
+                    addBotMessage(`Tracking IP addresses with unusual activity patterns...`);
+                    
+                    setTimeout(() => {
+                      // Fourth message - DDOS alert with button
+                      addBotMessage(`⚠️ Alert: Detected potential DDoS attack pattern!
+                      
+Analysis shows:
+- Multiple requests from similar IP ranges
+- Abnormal traffic spike (10x normal load)
+- Request pattern indicates automated behavior
 
-1. Root Cause Analysis:
-   - High CPU usage (>90%) sustained for 5+ minutes
-   - Possible causes:
-     * Resource-intensive processes or background jobs
-     * Application memory leaks
-     * Insufficient resource allocation
-     * DDoS attack or unusual traffic spike
-
-2. Immediate Actions:
-   - Monitor running processes (use 'top' or process explorer)
-   - Check application logs for unusual activity
-   - Review recent deployments or configuration changes
-   - Consider temporary horizontal scaling
-
-3. Long-term Solutions:
-   - Implement auto-scaling policies
-   - Optimize application code and database queries
-   - Set up proper CPU limits and requests
-   - Configure alerting thresholds appropriately
-
-Would you like me to elaborate on any of these points?`)
+Would you like me to implement rate limiting to mitigate this attack?`, false, undefined, true, 'button');
+                    }, 2000);
+                  }, 2000);
+                }, 2000);
               } else if (alert.message.includes('connection pool')) {
                 addBotMessage(`
 Here's my analysis of the database connection pool alert:
@@ -1027,6 +1031,35 @@ Would you like me to provide more specific details?`)
               }}>
                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Typography.Text>
+
+              {/* Rate limit button */}
+              {msg.requiresInput && msg.inputType === 'button' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  width: '100%',
+                  marginTop: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <Button
+                    type="primary"
+                    danger
+                    size="large"
+                    onClick={() => {
+                      // Handle rate limit implementation
+                      addBotMessage("✅ Rate limiting has been implemented successfully! I've configured the following measures:\n\n- Maximum 100 requests per minute per IP\n- IP-based request throttling enabled\n- Automatic blocking of suspicious traffic patterns\n\nThe system is now protected against DDoS attacks.");
+                    }}
+                    style={{
+                      borderRadius: '8px',
+                      padding: '0 20px',
+                      height: '44px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                    }}
+                  >
+                    Enable Rate Limiting
+                  </Button>
+                </div>
+              )}
             </motion.div>
           ))}
           <div ref={chatEndRef} />
