@@ -53,6 +53,7 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "framer-motion": "^12.4.10",
     "gemini-zod": "^0.1.0",
     "isbot": "^4.1.0",
     "jsonwebtoken": "8.5.1",

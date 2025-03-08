@@ -1,8 +1,9 @@
 import { PageLayout } from '@/designSystem/layouts/PageLayout'
-import { Card, Typography, List, Button, Input, Form, Space, Divider, message, Alert, Spin } from 'antd'
-import { useState, useEffect } from 'react'
-import { FolderOutlined, PlusOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons'
+import { Card, Typography, List, Button, Input, Form, Space, Divider, message, Alert, Spin, Avatar, Progress, Collapse, Tag } from 'antd'
+import { useState, useEffect, useRef } from 'react'
+import { FolderOutlined, PlusOutlined, DeleteOutlined, FolderOpenOutlined, SendOutlined, RobotOutlined, CheckCircleOutlined, LoadingOutlined, GlobalOutlined, CodeOutlined } from '@ant-design/icons'
 import { Api } from '@/core/trpc'
+import { motion } from 'framer-motion'
 
 // Add FileSystem Access API types
 declare global {
@@ -11,11 +12,43 @@ declare global {
   }
 }
 
+// Define chat message interface
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  isLog?: boolean;
+  logDetails?: DeploymentLog[];
+  requiresInput?: boolean;
+  inputType?: 'domain';
+}
+
+// Define deployment log interface
+interface DeploymentLog {
+  id: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+  timestamp: Date;
+}
+
 export default function ProjectsPage() {
   const [form] = Form.useForm()
   const [editMode, setEditMode] = useState(false)
   const [selectedPath, setSelectedPath] = useState('')
   const [isFileApiSupported, setIsFileApiSupported] = useState(true)
+  
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [isDeploying, setIsDeploying] = useState(false)
+  const [currentDeployStep, setCurrentDeployStep] = useState(0)
+  const [domainName, setDomainName] = useState('')
+  const [waitingForDomain, setWaitingForDomain] = useState(false)
+  const [deployProgress, setDeployProgress] = useState(0)
+  const [deployLogs, setDeployLogs] = useState<DeploymentLog[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
   
   // Query projects from the database
   const { data: projects, isLoading, refetch } = Api.project.findMany.useQuery()
@@ -51,6 +84,187 @@ export default function ProjectsPage() {
       console.warn('File System Access API is not supported in this browser')
     }
   }, [])
+
+  // Scroll to bottom of chat when messages change
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatMessages])
+
+  // Deployment animation steps
+  const deploymentSteps = [
+    { message: "Do you own a domain name?", requiresInput: true, inputType: 'domain' },
+    { message: "Great! We'll deploy your app to {domainName}", requiresInput: false },
+    { message: "Gathering requirements and analyzing project structure", requiresInput: false },
+    { message: "Building frontend assets for production", requiresInput: false },
+    { message: "Building docker image for backend services", requiresInput: false },
+    { message: "Provisioning cloud infrastructure", requiresInput: false },
+    { message: "Deploying backend services", requiresInput: false },
+    { message: "Configuring DNS and routing", requiresInput: false },
+    { message: "Setting up environment variables", requiresInput: false },
+    { message: "Configuring API endpoints", requiresInput: false },
+    { message: "Connecting frontend with backend services", requiresInput: false },
+    { message: "Running final checks and tests", requiresInput: false },
+    { message: "Voila! Your app is now live at https://{domainName}", requiresInput: false }
+  ]
+
+  // Function to add a deployment log
+  const addDeploymentLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+    const newLog = {
+      id: Date.now().toString(),
+      message,
+      type,
+      timestamp: new Date()
+    }
+    
+    setDeployLogs(prev => [...prev, newLog])
+    return newLog
+  }
+
+  // Generate realistic logs for each deployment step
+  const generateLogsForStep = (step: number): DeploymentLog[] => {
+    const logs: DeploymentLog[] = []
+    
+    switch(step) {
+      case 2: // Gathering requirements
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Scanning project files...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Detecting dependencies...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Found package.json with React dependencies', type: 'success', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Detected TypeScript configuration', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Requirements analysis complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 3: // Building frontend
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Running npm build...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Optimizing assets...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Compressing images...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Bundle size: 2.4MB', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Build successful!', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 4: // Building docker
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Creating Dockerfile...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Building base layer...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Installing dependencies...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Copying application code...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Finalizing image...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Docker image built successfully: app:latest (245MB)', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 5: // Provisioning infrastructure
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Connecting to cloud provider...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Provisioning virtual machines...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Setting up networking...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Creating database instance...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Infrastructure ready', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 6: // Deploying backend
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Pushing docker image to registry...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Deploying container to production...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Initializing database schema...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Starting backend services...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Backend deployment complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 7: // Configuring DNS
+        logs.push(
+          { id: crypto.randomUUID(), message: `Configuring DNS for ${domainName}...`, type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Setting up SSL certificate...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Configuring load balancer...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'DNS propagation in progress (may take up to 24 hours)...', type: 'warning', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Initial DNS configuration complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 8: // Setting up env variables
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Creating environment configuration...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Generating secure API keys...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Configuring database connection...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Environment setup complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 9: // Configuring API endpoints
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Setting up API gateway...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Configuring API routes...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Setting up rate limiting...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Implementing API security...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'API configuration complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 10: // Connecting frontend with backend
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Updating frontend API configuration...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Deploying frontend to CDN...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Configuring CORS...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Frontend-backend integration complete', type: 'success', timestamp: new Date() }
+        )
+        break
+      case 11: // Running checks and tests
+        logs.push(
+          { id: crypto.randomUUID(), message: 'Running health checks...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Running integration tests...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'Checking performance metrics...', type: 'info', timestamp: new Date() },
+          { id: crypto.randomUUID(), message: 'All tests passed successfully!', type: 'success', timestamp: new Date() }
+        )
+        break
+      default:
+        break
+    }
+    
+    return logs
+  }
+
+  // Handle deployment animation
+  useEffect(() => {
+    if (isDeploying && currentDeployStep < deploymentSteps.length) {
+      // Don't auto-advance if waiting for domain input
+      if (currentDeployStep === 0 && !domainName) {
+        setWaitingForDomain(true)
+        const step = deploymentSteps[currentDeployStep]
+        addBotMessage(step.message, false, true, 'domain')
+        return
+      }
+      
+      const randomDelay = Math.floor(Math.random() * 2000) + 1000 // Random delay between 1-3 seconds
+      
+      const timer = setTimeout(() => {
+        const step = deploymentSteps[currentDeployStep]
+        const stepMessage = step.message.replace('{domainName}', domainName)
+        
+        // Generate logs for this step
+        const logs = generateLogsForStep(currentDeployStep)
+        
+        // Add bot message with logs if we have them
+        if (logs.length > 0) {
+          addBotMessage(stepMessage, true, false, undefined, logs)
+        } else {
+          addBotMessage(stepMessage)
+        }
+        
+        // Update progress percentage
+        const progressValue = Math.floor((currentDeployStep / (deploymentSteps.length - 1)) * 100)
+        setDeployProgress(progressValue)
+        
+        // Advance to next step
+        setCurrentDeployStep(prev => prev + 1)
+        
+        // End deployment when all steps are complete
+        if (currentDeployStep === deploymentSteps.length - 1) {
+          setIsDeploying(false)
+        }
+      }, randomDelay)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [isDeploying, currentDeployStep, domainName, waitingForDomain])
 
   const addProject = (values: {name: string, path: string}) => {
     createProject.mutate({
@@ -91,11 +305,119 @@ export default function ProjectsPage() {
     }
   }
 
+  // Chat functions
+  const addUserMessage = (text: string) => {
+    setChatMessages(prev => [
+      ...prev, 
+      { 
+        id: Date.now().toString(), 
+        text, 
+        sender: 'user', 
+        timestamp: new Date() 
+      }
+    ])
+  }
+
+  const addBotMessage = (
+    text: string, 
+    isLog: boolean = false, 
+    requiresInput: boolean = false, 
+    inputType?: 'domain',
+    logDetails?: DeploymentLog[]
+  ) => {
+    setChatMessages(prev => [
+      ...prev, 
+      { 
+        id: Date.now().toString(), 
+        text, 
+        sender: 'bot', 
+        timestamp: new Date(),
+        isLog,
+        logDetails,
+        requiresInput,
+        inputType
+      }
+    ])
+  }
+  
+  // Handle domain input submission
+  const handleDomainSubmit = () => {
+    if (!domainName.trim()) return
+    
+    // Add user message with domain
+    addUserMessage(domainName)
+    
+    // Continue deployment process
+    setWaitingForDomain(false)
+    setCurrentDeployStep(1) // Move to next step
+    setIsDeploying(true)
+  }
+
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return
+    
+    // If waiting for domain input, treat the input as domain name
+    if (waitingForDomain) {
+      setDomainName(chatInput)
+      addUserMessage(chatInput)
+      
+      // Continue deployment process
+      setWaitingForDomain(false)
+      setCurrentDeployStep(1) // Move to next step
+      setIsDeploying(true)
+      setChatInput('')
+      return
+    }
+    
+    addUserMessage(chatInput)
+    
+    // Check if message is about deployment
+    if (chatInput.toLowerCase().includes('deploy')) {
+      // Find project name in the message
+      let projectName = "your application"
+      if (projects && projects.length > 0) {
+        for (const project of projects) {
+          if (chatInput.toLowerCase().includes(project.name.toLowerCase())) {
+            projectName = project.name
+            break
+          }
+        }
+      }
+      
+      // Reset deployment state
+      setDeployProgress(0)
+      setDeployLogs([])
+      setDomainName('')
+      setWaitingForDomain(false)
+      
+      // Start deployment sequence
+      setTimeout(() => {
+        addBotMessage(`I'll help you deploy ${projectName}!`)
+        setIsDeploying(true)
+        setCurrentDeployStep(0)
+      }, 1000)
+    } else {
+      // Generic response for non-deployment messages
+      setTimeout(() => {
+        addBotMessage("I'm your deployment assistant. Let me know if you want to deploy any of your projects!")
+      }, 1000)
+    }
+    
+    setChatInput('')
+  }
+
+  const toggleChat = () => {
+    setIsChatOpen(prev => !prev)
+    if (!isChatOpen && chatMessages.length === 0) {
+      // Add welcome message when opening chat for the first time
+      setTimeout(() => {
+        addBotMessage("Hello! I'm your deployment assistant. How can I help you today?")
+      }, 500)
+    }
+  }
+
   return (
-    <PageLayout
-      title="Projects"
-      subtitle="Manage your local project paths"
-    >
+    <PageLayout>
       {!isFileApiSupported && (
         <Alert
           type="warning"
@@ -213,6 +535,265 @@ export default function ProjectsPage() {
           )}
         </Space>
       </Card>
+
+      {/* Chat Widget Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000
+        }}
+      >
+        <Button
+          type="primary"
+          shape="circle"
+          size="large"
+          icon={<RobotOutlined />}
+          onClick={toggleChat}
+          style={{ 
+            width: '60px', 
+            height: '60px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        />
+      </motion.div>
+
+      {/* Chat Widget Panel */}
+      <motion.div
+        initial={{ opacity: 0, x: 300 }}
+        animate={{ 
+          opacity: isChatOpen ? 1 : 0, 
+          x: isChatOpen ? 0 : 300,
+          pointerEvents: isChatOpen ? 'all' : 'none'
+        }}
+        transition={{ duration: 0.3 }}
+        style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          width: '350px',
+          height: 'calc(100vh - 160px)',
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 999
+        }}
+      >
+        {/* Chat Header */}
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: '1px solid #f0f0f0', 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1677ff' }} />
+            <Typography.Title level={5} style={{ margin: 0 }}>Deployment Assistant</Typography.Title>
+          </div>
+          <Button 
+            type="text" 
+            shape="circle" 
+            icon={<span>×</span>} 
+            onClick={toggleChat}
+            style={{ fontSize: '20px', fontWeight: 'bold' }}
+          />
+        </div>
+
+        {/* Chat Messages */}
+        <div style={{ 
+          flex: 1, 
+          padding: '16px', 
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {isDeploying && deployProgress > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                alignSelf: 'center',
+                width: '90%',
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#f6f6f6',
+                borderRadius: '8px'
+              }}
+            >
+              <Typography.Text strong>Deployment Progress</Typography.Text>
+              <Progress 
+                percent={deployProgress} 
+                status={deployProgress === 100 ? "success" : "active"}
+                strokeColor={{
+                  '0%': '#1677ff',
+                  '100%': '#52c41a',
+                }}
+              />
+            </motion.div>
+          )}
+          
+          {chatMessages.map(msg => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: msg.isLog ? '90%' : '80%',
+                width: msg.isLog ? '90%' : 'auto'
+              }}
+            >
+              {/* Regular message bubble */}
+              {!msg.requiresInput && (
+                <div style={{
+                  backgroundColor: msg.sender === 'user' ? '#1677ff' : '#f0f0f0',
+                  color: msg.sender === 'user' ? 'white' : 'black',
+                  padding: '10px 14px',
+                  borderRadius: '18px',
+                  borderBottomRightRadius: msg.sender === 'user' ? '4px' : '18px',
+                  borderBottomLeftRadius: msg.sender === 'bot' ? '4px' : '18px',
+                  width: msg.isLog ? '100%' : 'auto'
+                }}>
+                  {msg.text}
+                  
+                  {/* Collapsible logs */}
+                  {msg.isLog && msg.logDetails && msg.logDetails.length > 0 && (
+                    <div style={{ marginTop: '10px' }}>
+                      <Collapse 
+                        ghost 
+                        size="small"
+                        expandIconPosition="end"
+                        items={[
+                          {
+                            key: '1',
+                            label: <Typography.Text strong>Show Details</Typography.Text>,
+                            children: (
+                              <div style={{ 
+                                backgroundColor: '#000', 
+                                color: '#fff', 
+                                padding: '12px', 
+                                borderRadius: '4px', 
+                                maxHeight: '200px', 
+                                overflowY: 'auto',
+                                fontFamily: 'monospace',
+                                fontSize: '12px'
+                              }}>
+                                {msg.logDetails.map(log => (
+                                  <div key={log.id} style={{ marginBottom: '6px', display: 'flex', alignItems: 'flex-start' }}>
+                                    <span style={{ 
+                                      color: 
+                                        log.type === 'success' ? '#52c41a' : 
+                                        log.type === 'error' ? '#ff4d4f' :
+                                        log.type === 'warning' ? '#faad14' : 
+                                        '#1677ff',
+                                      marginRight: '8px'
+                                    }}>
+                                      {log.type === 'success' ? '✓' : 
+                                       log.type === 'error' ? '✗' :
+                                       log.type === 'warning' ? '⚠' : 
+                                       '→'}
+                                    </span>
+                                    <span>
+                                      <span style={{ color: '#888', marginRight: '8px' }}>
+                                        {log.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                      </span>
+                                      {log.message}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          }
+                        ]}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Domain input field */}
+              {msg.requiresInput && msg.inputType === 'domain' && (
+                <div style={{
+                  backgroundColor: '#f0f0f0',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  width: '100%'
+                }}>
+                  <Typography.Text strong style={{ display: 'block', marginBottom: '12px' }}>
+                    <GlobalOutlined style={{ marginRight: '8px' }} />
+                    {msg.text}
+                  </Typography.Text>
+                  
+                  <Input
+                    placeholder="yourdomain.com" 
+                    prefix={<GlobalOutlined style={{ color: '#bfbfbf' }} />}
+                    value={domainName}
+                    onChange={e => setDomainName(e.target.value)}
+                    onPressEnter={handleDomainSubmit}
+                    style={{ marginBottom: '8px' }}
+                  />
+                  
+                  <Button 
+                    type="primary" 
+                    onClick={handleDomainSubmit}
+                    disabled={!domainName.trim()}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
+              
+              {/* Message timestamp */}
+              {!msg.requiresInput && (
+                <Typography.Text type="secondary" style={{ 
+                  fontSize: '11px', 
+                  display: 'block', 
+                  marginTop: '4px',
+                  textAlign: msg.sender === 'user' ? 'right' : 'left'
+                }}>
+                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography.Text>
+              )}
+            </motion.div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Chat Input */}
+        <div style={{ 
+          padding: '16px', 
+          borderTop: '1px solid #f0f0f0',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <Input
+            placeholder="Type a message..."
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onPressEnter={handleSendMessage}
+            style={{ flex: 1 }}
+          />
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={handleSendMessage}
+            disabled={!chatInput.trim()}
+          />
+        </div>
+      </motion.div>
     </PageLayout>
   )
 }
