@@ -1,6 +1,7 @@
 import { Button, Card, Col, Input, Row, Space, Steps, Table, Tabs, Tag, Typography, message } from 'antd'
 import { useState } from 'react'
-import { GithubOutlined, SearchOutlined, LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import { GithubOutlined, SearchOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { Api } from '@/core/trpc'
 
 const { Title, Text, Paragraph } = Typography
 const { TabPane } = Tabs
@@ -82,6 +83,10 @@ export default function RepositoriesPage() {
   const [chatMessages, setChatMessages] = useState(initialChatMessages)
   const [chatInput, setChatInput] = useState('')
   const [activeTab, setActiveTab] = useState('repositories')
+  const [isAiLoading, setIsAiLoading] = useState(false)
+
+
+  const aiCaller = Api.ai.generateText.useMutation();
 
   // Mock repository search function
   const handleSearch = () => {
@@ -131,8 +136,8 @@ export default function RepositoriesPage() {
     processStep()
   }
 
-  // Mock chat function
-  const handleSendMessage = () => {
+  // Updated chat function to use AI router
+  const handleSendMessage = async () => {
     if (!chatInput.trim()) return
 
     // Add user message
@@ -144,23 +149,38 @@ export default function RepositoriesPage() {
     
     setChatMessages([...chatMessages, userMessage])
     setChatInput('')
+    setIsAiLoading(true)
     
-    // Mock response after a short delay
-    setTimeout(() => {
-      const responseContent = chatInput.toLowerCase().includes('error') 
-        ? "I noticed you mentioned an error. Could you provide the error logs so I can help troubleshoot?"
-        : chatInput.toLowerCase().includes('docker') 
-        ? "For Docker-related issues, I recommend checking the container logs and ensuring your Dockerfile is properly configured. Do you need help with a specific Docker command?" 
-        : "I'll help you with that. Could you provide more details about your requirements or the specific DevOps challenge you're facing?"
+    try {
+      // Use the AI router to get a response from OpenAI
+      const response = await aiCaller.mutateAsync({
+        prompt: `You are a DevOps assistant helping with repositories and Docker. 
+                The user says: "${chatInput}"
+                Provide a helpful, concise response related to DevOps, Docker, or repositories.`,
+        provider: 'gemini'
+      });
       
       const systemResponse = {
         sender: 'system',
-        content: responseContent,
+        content: response.answer,
         timestamp: new Date().toISOString()
       }
       
       setChatMessages(prevMessages => [...prevMessages, systemResponse])
-    }, 1000)
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      
+      // Add error message
+      const errorResponse = {
+        sender: 'system',
+        content: 'Sorry, I encountered an error while processing your request. Please try again later.',
+        timestamp: new Date().toISOString()
+      }
+      
+      setChatMessages(prevMessages => [...prevMessages, errorResponse])
+    } finally {
+      setIsAiLoading(false)
+    }
   }
 
   const columns = [
@@ -295,6 +315,20 @@ export default function RepositoriesPage() {
                         </div>
                       </div>
                     ))}
+                    {isAiLoading && (
+                      <div style={{ textAlign: 'left', marginTop: '10px' }}>
+                        <div style={{ 
+                          display: 'inline-block',
+                          padding: '8px 12px', 
+                          background: '#e6f4ff', 
+                          borderRadius: '8px',
+                          maxWidth: '80%'
+                        }}>
+                          <LoadingOutlined style={{ marginRight: '8px' }} />
+                          Thinking...
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <Input.Group compact>
@@ -304,8 +338,16 @@ export default function RepositoriesPage() {
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onPressEnter={handleSendMessage}
+                      disabled={isAiLoading}
                     />
-                    <Button type="primary" onClick={handleSendMessage}>Send</Button>
+                    <Button 
+                      type="primary" 
+                      onClick={handleSendMessage} 
+                      loading={isAiLoading}
+                      disabled={isAiLoading}
+                    >
+                      Send
+                    </Button>
                   </Input.Group>
                 </div>
               </Card>
