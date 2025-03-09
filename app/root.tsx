@@ -60,15 +60,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <AnalyticsProvider>
               <WorkspaceProvider>
                 <UserProvider>
-
-{children}
-                  
+                  {children}
                 </UserProvider>
               </WorkspaceProvider>
             </AnalyticsProvider>
           </TrpcClient.Provider>
         </DesignSystemProvider>
-
         <ScrollRestoration />
         <Scripts />
       </body>

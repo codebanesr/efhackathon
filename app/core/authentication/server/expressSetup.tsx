@@ -4,14 +4,17 @@ import passport from 'passport'
 import { Configuration } from '~/core/configuration'
 import { COOKIE_MAX_AGE, Cookies } from './cookies'
 import { GoogleProvider } from './providers/google.provider'
-import { GitHubProvider } from './providers/github.provider'
 
-const providers = [GoogleProvider, GitHubProvider]
+const providers = [GoogleProvider]
 
+export const getProviders = () => {
+  return providers.filter(provider => provider.isActive())
+}
 
 export const expressSetup = (app: Express) => {
   app.use(passport.initialize())
 
+  getProviders().forEach(provider => passport.use(provider.strategy))
 
   app.get('/api/auth/:provider', (req, res, next) => {
     const provider = req.params.provider
