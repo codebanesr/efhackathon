@@ -7,7 +7,7 @@ import { AuthenticationServer } from '~/core/authentication/server'
 import { Server as SocketIOServer } from 'socket.io'
 import path from 'path'
 import { callReactAgent } from './reactAgent'
-import projectFilesRouter from './api/projectFiles'
+import { HumanMessage } from '@langchain/core/messages'
 
 const app = express()
 
@@ -66,12 +66,6 @@ app.get('/test-agent', (req, res) => {
 
 app.use(morgan('tiny'))
 
-// Parse JSON request bodies
-app.use(express.json())
-
-// Register the project files router
-app.use('/api/project-files', projectFilesRouter)
-
 AuthenticationServer.expressSetup(app)
 
 // Socket.IO connection handling
@@ -84,9 +78,15 @@ io.on('connection', (socket) => {
       // Call the React agent with the user's message
       const response = await callReactAgent(userMessage)
       // Stream each chunk as it comes
-      for await (let chunk of response.messages) {
+      for await (let chunk of response) {
         console.log(chunk.content)
-        if(chunk.additional_kwargs.role == 'assistant') {
+        // if(chunk.additional_kwargs.role == 'assistant') {
+        //   socket.emit('agentResponse', chunk)
+        // }
+
+        if(chunk.messages[0] instanceof HumanMessage) {
+          continue
+        } else {
           socket.emit('agentResponse', chunk)
         }
       }
