@@ -7,6 +7,7 @@ import { AuthenticationServer } from '~/core/authentication/server'
 import { Server as SocketIOServer } from 'socket.io'
 import path from 'path'
 import { callReactAgent } from './reactAgent'
+import projectFilesRouter from './api/projectFiles'
 
 const app = express()
 
@@ -64,6 +65,12 @@ app.get('/test-agent', (req, res) => {
 })
 
 app.use(morgan('tiny'))
+
+// Parse JSON request bodies
+app.use(express.json())
+
+// Register the project files router
+app.use('/api/project-files', projectFilesRouter)
 
 AuthenticationServer.expressSetup(app)
 
