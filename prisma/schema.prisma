@@ -72,13 +72,19 @@ model OrganizationRole {
 /// @@allow('all', auth().id == userId)
 /// @@allow('all', auth().globalRole == 'ADMIN')
 model Project {
-  id          String   @id() @default(uuid())
-  name        String
-  path        String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt()
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id() @default(uuid())
+  name            String
+  path            String
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt()
+  isGithubRepo    Boolean  @default(false)
+  githubRepoUrl   String?
+  githubRepoId    String?
+  githubRepoOwner String?
+  githubRepoName  String?
+  githubBranch    String?
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
